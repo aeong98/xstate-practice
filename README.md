@@ -175,7 +175,6 @@ public class GumballMachine {
 - 기계의 모든 상태를 캡슐화해서  State 인터페이스를 구현하는 상태 클래스 생성
 - 조건문 코드를 전부 없애고 상태 클래스에 모든 작업을 위임
 
-![Untitled](https://s3-us-west-2.amazonaws.com/secure.notion-static.com/e7e38ba9-5fba-415b-87aa-4a8148635df5/Untitled.png)
 
 # State 클래스 구현하기
 
