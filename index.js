@@ -77,6 +77,7 @@ const GumballMachine = createMachine({
         }),
         ejectQuarter: assign((context, event)=>{
             console.log("동전이 반환됩니다.");
+            return {count: context.count -1 1}
         }),
         turnCrank: assign((context, event)=>{
             console.log("손잡이를 돌리셨습니다.")
