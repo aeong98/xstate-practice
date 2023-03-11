@@ -1,3 +1,4 @@
+출처: 헤드퍼스트 디자인패턴
 # 스테이트 패턴이란
 
 > 상태 패턴(State Pattern) 을 사용하면 객체의 내부 상태가 바뀜에 따라서 객체의 행동을 바꿀 수 있다. 마치 객체의 클래스가 바뀌는 것과 같은 결과를 얻을 수 있다.
@@ -5,11 +6,9 @@
 
 # 상태  기계 기초
 
-
 ## 1. 상태들을 모아보기
 
-총 4개의 상태 존재
-
+> 총 4개의 상태 존재
 - No Quarter : 동전 없음
 - Has Quarter: 동전 있음
 - Gumball Sold : 알맹이 판매
@@ -158,11 +157,7 @@ public class GumballMachine {
 }
 ```
 
-<aside>
-🚨 이렇게 구현하면 새로운 요청 사항이 생겼을 때 모든 메서드에 조건문을 전부 추가해줘야 한다.
-**확장이 어려움**
-
-</aside>
+> 🚨 이렇게 구현하면 새로운 요청 사항이 생겼을 때 모든 메서드에 조건문을 전부 추가해줘야 한다. **확장이 어려움**
 
 - 이 코드는 OCP 를 지키고 있지 않음.
 - 상태전환이 복잡한 조건문 속에 숨어서 분명하게 드러나지 않음.
@@ -209,10 +204,8 @@ public class NoQuarterState implements State {
 
 3,4,5. 발생하면 예외처리. 안내메세지 출력 
 
-<aside>
-🚨 상태에 맛게 적절한 행동을 구현하고, 상황에 따라 뽑기 기계의 상태가 다른 상태로 전환될 수 있음.
+> 🚨 상태에 맛게 적절한 행동을 구현하고, 상황에 따라 뽑기 기계의 상태가 다른 상태로 전환될 수 있음.
 
-</aside>
 
 # 뽑기 기계 코드 수정하기
 
@@ -315,7 +308,133 @@ public class GumballMachine {
 # 🤓 유한 상태 기계
 
 <img width="1085" alt="image" src="https://user-images.githubusercontent.com/51521314/224484078-5ebad5e0-639c-4844-b707-b8240767c101.png">
+
 - 상태들의 수가 유한하다.
 - 어떤 고유한 상태 내에서든 프로그램은 다르게 행동, 한 상태에서 다른 상태로 즉시 전환될 수 있다.
 - 현재의 상태에 따라 프로그램은 특정 다른 상태로 전환되거나, 전환되지 않을 수 있다. **`(전이 transition)`**
 - 이러한 규칙들은 유한하고, 미리 결정되어 있다.
+
+## xState 예시코드
+```js
+import {assign, createMachine, interpret} from 'xstate';
+
+// machine.transition(...) is a pure function used by the interpreter.
+const GumballMachine = createMachine({
+    predictableActionArguments:true,
+    // Machine identifier
+    id: 'gumballMachine',
+
+    // Initial state
+    initial: 'noQuarterState',
+
+    // Local context for entire machine
+    context: {
+        count: 0,
+    },
+
+    // State definitions
+    states: {
+        noQuarterState: {
+            on:{
+                INSERT:{
+                    target: "hasQuarterState",
+                    actions: ['insertQuarters']
+                },
+                EJECT:{
+                    actions: ['notifyInsertQuarter']
+                },
+                TURN_CRANK:{
+                    actions: ['notifyInsertQuarter']
+                },
+                DISPENSE:{
+                    actions: ['notifyInsertQuarter']
+                }
+            }
+        },
+        hasQuarterState: {
+            on:{
+                INSERT:{
+                    actions: ['notifyInsertOnlyOneQuarter']
+                },
+                EJECT:{
+                    target: "noQuarterState",
+                    actions: ['ejectQuarter']
+                },
+                TURN_CRANK:{
+                    target: "soldState",
+                    actions: ['turnCrank']
+                },
+                DISPENSE:{
+                    actions: ['notifyCanNotDispense']
+                }
+            }
+        },
+        soldState: {
+            on: {
+                INSERT:{
+                    actions: ['notifyIsDispensing']
+                },
+                EJECT:{
+                    actions: ['notifyIsDispensing']
+                },
+                TURN_CRANK:{
+                    actions: ['notifyIsDispensing']
+                },
+                DISPENSE:{
+                    target: 'noQuarterState',
+                    actions: ['dispense']
+                }
+            }
+        },
+    },
+},{
+    actions:{
+        insertQuarters: assign((context, event) => {
+            console.log('동전을 넣으셨습니다.');
+            return {count: context.count + 1}
+        }),
+        ejectQuarter: assign((context, event)=>{
+            console.log("동전이 반환됩니다.");
+        }),
+        turnCrank: assign((context, event)=>{
+            console.log("손잡이를 돌리셨습니다.")
+        }),
+        dispense: assign((context, event)=> {
+            console.log('알맹이를 내보내고 있습니다.');
+            return {count : context.count - 1};
+        }),
+        notifyInsertQuarter: assign((context, event)=> {
+            console.log('동전을 넣어주세요.');
+        }),
+        notifyInsertOnlyOneQuarter: assign((context, event)=> {
+            console.log('동전은 한개만 넣어주세요');
+        }),
+        notifyCanNotDispense: assign((context, event)=>{
+            console.log('알맹이를 내보낼 수 없습니다.')
+        }),
+        notifyIsDispensing: assign((context, event)=>{
+            console.log('알맹이를 내보내고 있습니다.')
+        }),
+    }
+});
+
+const GumballService = interpret(GumballMachine)
+    .onTransition((state)=> console.log(state.value, state.context))
+    .start();
+
+GumballService.send("DISPENSE")
+// 동전을 넣어주세요.
+
+GumballService.send("INSERT")
+// 동전을 넣으셨습니다.
+// hasQuarterState { count: 1 }
+
+GumballService.send("TURN_CRANK")
+// 손잡이를 돌리셨습니다.
+// soldState { count: 1 }
+
+GumballService.send("DISPENSE")
+// 알맹이를 내보내고 있습니다.
+// noQuarterState { count: 0 }
+
+```
